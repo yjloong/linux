@@ -686,7 +686,6 @@ static int sunxi_pconf_group_set(struct pinctrl_dev *pctldev, unsigned group,
 }
 
 static const struct pinconf_ops sunxi_pconf_ops = {
-	.is_generic		= true,
 	.pin_config_get		= sunxi_pconf_get,
 	.pin_config_set		= sunxi_pconf_set,
 	.pin_config_group_get	= sunxi_pconf_group_get,

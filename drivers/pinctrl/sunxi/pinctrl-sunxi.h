@@ -16,6 +16,7 @@
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
 
+#define CONFIG_PINCTRL_SUNXI_DEBUGFS 1
 #define PA_BASE	0
 #define PB_BASE	32
 #define PC_BASE	64

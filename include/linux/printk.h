@@ -8,7 +8,7 @@
 #include <linux/linkage.h>
 #include <linux/ratelimit_types.h>
 #include <linux/once_lite.h>
-
+#define DEBUG 1
 struct console;
 
 extern const char linux_banner[];
