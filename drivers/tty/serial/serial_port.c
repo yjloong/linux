@@ -232,6 +232,7 @@ static int __uart_read_properties(struct uart_port *port, bool use_defaults)
 			break;
 		}
 	}
+	port->iotype = UPIO_MEM32;
 
 	if (!use_defaults && port->iotype == UPIO_UNKNOWN) {
 		dev_err(dev, "Unsupported reg-io-width (%u)\n", value);

@@ -49,6 +49,8 @@ enum regulator_detection_severity {
 	REGULATOR_SEVERITY_WARN,
 };
 
+#define regulator_linear_range linear_range
+
 /* Initialize struct linear_range for regulators */
 #define REGULATOR_LINEAR_RANGE(_min_uV, _min_sel, _max_sel, _step_uV)	\
 	LINEAR_RANGE(_min_uV, _min_sel, _max_sel, _step_uV)

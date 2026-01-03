@@ -173,6 +173,12 @@ config GPIO_AMDPT
 	  Driver for GPIO functionality on Promontory IOHub.
 	  Requires ACPI ASL code to enumerate as a platform device.
 
+config GPIO_SUNXI
+	tristate "SUNXI GPIO Support"
+	help
+	  Say yes if need SUNXI GPIO Support
+
+
 config GPIO_ASPEED
 	tristate "Aspeed GPIO support"
 	depends on (ARCH_ASPEED || COMPILE_TEST) && OF_GPIO

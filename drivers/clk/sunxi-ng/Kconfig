@@ -7,6 +7,11 @@ config SUNXI_CCU
 
 if SUNXI_CCU
 
+config SUN50IW9_CCU
+	tristate "Support for the Allwinner newer SUNXI50IW9 CCU"
+	default ARCH_SUNXI
+	depends on ARM64 || COMPILE_TEST
+
 config SUNIV_F1C100S_CCU
 	tristate "Support for the Allwinner newer F1C100s CCU"
 	default ARCH_SUNXI

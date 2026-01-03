@@ -897,37 +897,37 @@ static const struct sunxi_desc_pin sun50iw9_pins[] = {
 		  SUNXI_FUNCTION_IRQ_BANK(0x6, 7, 16)),
 };
 
-static const unsigned int h616_irq_bank_map[] = { 0, 2, 3, 4, 5, 6, 7, 8 };
+static const unsigned int h618_irq_bank_map[] = { 0, 2, 3, 4, 5, 6, 7, 8 };
 
-static const struct sunxi_pinctrl_desc h616_pinctrl_data = {
+static const struct sunxi_pinctrl_desc h618_pinctrl_data = {
 	.pins = sun50iw9_pins,
 	.npins = ARRAY_SIZE(sun50iw9_pins),
-	.irq_banks = ARRAY_SIZE(h616_irq_bank_map),
-	.irq_bank_map = h616_irq_bank_map,
+	.irq_banks = ARRAY_SIZE(h618_irq_bank_map),
+	.irq_bank_map = h618_irq_bank_map,
 	.irq_read_needs_mux = true,
 	.io_bias_cfg_variant = BIAS_VOLTAGE_PIO_POW_MODE_CTL,
 };
 
-static int h616_pinctrl_probe(struct platform_device *pdev)
+static int h618_pinctrl_probe(struct platform_device *pdev)
 {
 	pr_err("%s: %d\n", __func__, __LINE__);
-	return sunxi_pinctrl_init(pdev, &h616_pinctrl_data);
+	return sunxi_pinctrl_init(pdev, &h618_pinctrl_data);
 }
 
-static const struct of_device_id h616_pinctrl_match[] = {
+static const struct of_device_id h618_pinctrl_match[] = {
 	{ .compatible = "allwinner,sun50iw9-pinctrl", },
 	{}
 };
 
 static struct platform_driver sun50iw9_pinctrl_driver = {
-	.probe	= h616_pinctrl_probe,
+	.probe	= h618_pinctrl_probe,
 	.driver	= {
-		.name		= "sun50i-h616-pinctrl",
-		.of_match_table	= h616_pinctrl_match,
+		.name		= "sun50wi9-h618-pinctrl",
+		.of_match_table	= h618_pinctrl_match,
 	},
 };
 
-MODULE_DEVICE_TABLE(of, h616_pinctrl_match);
+MODULE_DEVICE_TABLE(of, h618_pinctrl_match);
 
 static int __init sun50iw9_pio_init(void)
 {

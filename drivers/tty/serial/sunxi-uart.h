@@ -241,6 +241,9 @@ struct sw_uart_port {
 #define SUNXI_UART_NUM			1
 #endif
 
+#undef SUNXI_UART_NUM
+#define SUNXI_UART_NUM			6
+
 #define SUNXI_UART_FIFO_SIZE		64
 
 #define SUNXI_UART_DEV_NAME		"uart"

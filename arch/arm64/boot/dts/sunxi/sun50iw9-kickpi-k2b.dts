@@ -119,7 +119,7 @@
 	pinctrl-0 = <&uart1_ph_pins>;
 	pinctrl-1 = <&uart1_ph_sleep>;
 	device_type = "uart1";
-	status = "okay";
+	status = "disabled";
 };
 
 &uart2 {

@@ -52,6 +52,11 @@ obj-$(CONFIG_SUN9I_A80_CCU)	+= sun9i-a80-ccu.o
 obj-$(CONFIG_SUN9I_A80_CCU)	+= sun9i-a80-de-ccu.o
 obj-$(CONFIG_SUN9I_A80_CCU)	+= sun9i-a80-usb-ccu.o
 
+obj-$(CONFIG_SUN50IW9_CCU) += ccu-sun50iw9.o
+obj-$(CONFIG_SUN50IW9_CCU) += ccu-sun50iw9-r.o
+obj-$(CONFIG_SUN50IW9_CCU) += ccu-sun50iw9-rtc.o
+obj-$(CONFIG_SUN50IW9_CCU) += rtc-sunxi-ccu.o
+
 suniv-f1c100s-ccu-y		+= ccu-suniv-f1c100s.o
 sun20i-d1-ccu-y			+= ccu-sun20i-d1.o
 sun20i-d1-r-ccu-y		+= ccu-sun20i-d1-r.o

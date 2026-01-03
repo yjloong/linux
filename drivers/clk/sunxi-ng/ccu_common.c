@@ -109,6 +109,117 @@ int ccu_pll_notifier_register(struct ccu_pll_nb *pll_nb)
 }
 EXPORT_SYMBOL_NS_GPL(ccu_pll_notifier_register, "SUNXI_CCU");
 
+
+#ifdef CONFIG_PM_SLEEP
+
+static LIST_HEAD(ccu_reg_cache_list);
+
+struct sunxi_clock_reg_cache {
+	struct list_head node;
+	void __iomem *reg_base;
+	struct ccu_reg_dump *rdump;
+	unsigned int rd_num;
+	const struct ccu_reg_dump *rsuspend;
+	unsigned int rsuspend_num;
+};
+
+static void ccu_save(void __iomem *base, struct ccu_reg_dump *rd,
+		    unsigned int num_regs)
+{
+	for (; num_regs > 0; --num_regs, ++rd)
+		rd->value = readl(base + rd->offset);
+}
+
+static void ccu_restore(void __iomem *base,
+			const struct ccu_reg_dump *rd,
+			unsigned int num_regs)
+{
+	for (; num_regs > 0; --num_regs, ++rd)
+		writel(rd->value, base + rd->offset);
+}
+
+static struct ccu_reg_dump *ccu_alloc_reg_dump(struct ccu_common **rdump,
+					       unsigned long nr_rdump)
+{
+	struct ccu_reg_dump *rd;
+	unsigned int i;
+
+	rd = kcalloc(nr_rdump, sizeof(*rd), GFP_KERNEL);
+	if (!rd)
+		return NULL;
+
+	for (i = 0; i < nr_rdump; ++i) {
+		struct ccu_common *ccu_clks = rdump[i];
+
+		rd[i].offset = ccu_clks->reg;
+	}
+
+	return rd;
+}
+
+static int ccu_suspend(void)
+{
+	struct sunxi_clock_reg_cache *reg_cache;
+
+	list_for_each_entry(reg_cache, &ccu_reg_cache_list, node) {
+		ccu_save(reg_cache->reg_base, reg_cache->rdump,
+			 reg_cache->rd_num);
+		ccu_restore(reg_cache->reg_base, reg_cache->rsuspend,
+			    reg_cache->rsuspend_num);
+	}
+	return 0;
+}
+
+static void ccu_resume(void)
+{
+	struct sunxi_clock_reg_cache *reg_cache;
+
+	list_for_each_entry(reg_cache, &ccu_reg_cache_list, node)
+		ccu_restore(reg_cache->reg_base, reg_cache->rdump,
+				reg_cache->rd_num);
+}
+
+static struct syscore_ops sunxi_clk_syscore_ops = {
+	.suspend = ccu_suspend,
+	.resume = ccu_resume,
+};
+
+void sunxi_ccu_sleep_init(void __iomem *reg_base,
+			  struct ccu_common **rdump,
+			  unsigned long nr_rdump,
+			  const struct ccu_reg_dump *rsuspend,
+			  unsigned long nr_rsuspend)
+{
+	struct sunxi_clock_reg_cache *reg_cache;
+
+	reg_cache = kzalloc(sizeof(struct sunxi_clock_reg_cache),
+			GFP_KERNEL);
+	if (!reg_cache)
+		panic("could not allocate register reg_cache.\n");
+	reg_cache->rdump = ccu_alloc_reg_dump(rdump, nr_rdump);
+
+	if (!reg_cache->rdump)
+		panic("could not allocate register dump storage.\n");
+
+	if (list_empty(&ccu_reg_cache_list))
+		register_syscore_ops(&sunxi_clk_syscore_ops);
+
+	reg_cache->reg_base = reg_base;
+	reg_cache->rd_num = nr_rdump;
+	reg_cache->rsuspend = rsuspend;
+	reg_cache->rsuspend_num = nr_rsuspend;
+	list_add_tail(&reg_cache->node, &ccu_reg_cache_list);
+}
+#else
+void sunxi_ccu_sleep_init(void __iomem *reg_base,
+			  struct ccu_common **rdump,
+			  unsigned long nr_rdump,
+			  const struct ccu_reg_dump *rsuspend,
+			  unsigned long nr_rsuspend)
+{ }
+#endif
+EXPORT_SYMBOL_GPL(sunxi_ccu_sleep_init);
+
 static int sunxi_ccu_probe(struct sunxi_ccu *ccu, struct device *dev,
 			   struct device_node *node, void __iomem *reg,
 			   const struct sunxi_ccu_desc *desc)
@@ -236,7 +347,7 @@ int devm_sunxi_ccu_probe(struct device *dev, void __iomem *reg,
 }
 EXPORT_SYMBOL_NS_GPL(devm_sunxi_ccu_probe, "SUNXI_CCU");
 
-void of_sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
+int of_sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
 			const struct sunxi_ccu_desc *desc)
 {
 	struct sunxi_ccu *ccu;
@@ -244,13 +355,39 @@ void of_sunxi_ccu_probe(struct device_node *node, void __iomem *reg,
 
 	ccu = kzalloc(sizeof(*ccu), GFP_KERNEL);
 	if (!ccu)
-		return;
+		return -ENOMEM;
 
 	ret = sunxi_ccu_probe(ccu, NULL, node, reg, desc);
 	if (ret) {
 		pr_err("%pOF: probing clocks failed: %d\n", node, ret);
 		kfree(ccu);
 	}
+
+	return ret;
+}
+void set_reg(char __iomem *addr, u32 val, u8 bw, u8 bs)
+{
+	u32 mask = (1UL << bw) - 1UL;
+	u32 tmp = 0;
+
+	tmp = readl(addr);
+	tmp &= ~(mask << bs);
+
+	writel(tmp | ((val & mask) << bs), addr);
+}
+
+void set_reg_key(char __iomem *addr,
+		 u32 key, u8 kbw, u8 kbs,
+		 u32 val, u8 bw, u8 bs)
+{
+	u32 mask = (1UL << bw) - 1UL;
+	u32 kmask = (1UL << kbw) - 1UL;
+	u32 tmp = 0;
+
+	tmp = readl(addr);
+	tmp &= ~(mask << bs);
+
+	writel(tmp | ((val & mask) << bs) | ((key & kmask) << kbs), addr);
 }
 
 MODULE_DESCRIPTION("Common clock support for Allwinner SoCs");
