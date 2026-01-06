@@ -15,6 +15,7 @@
 #include "ccu_common.h"
 #include "ccu_gate.h"
 #include "ccu_reset.h"
+#include <linux/syscore_ops.h>
 
 struct sunxi_ccu {
 	const struct sunxi_ccu_desc	*desc;

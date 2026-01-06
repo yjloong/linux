@@ -181,7 +181,26 @@ static int mfd_add_device(struct device *parent, int id,
 	if (ret < 0)
 		goto fail_res;
 
+	
 	if (IS_ENABLED(CONFIG_OF) && parent->of_node && cell->of_compatible) {
+		for_each_child_of_node(of_get_child_by_name(parent->of_node, "regulators"), np) {
+			if (of_device_is_compatible(np, cell->of_compatible)) {
+				/* Skip 'disabled' devices */
+				if (!of_device_is_available(np)) {
+					disabled = true;
+					continue;
+				}
+
+				ret = mfd_match_of_node_to_dev(pdev, np, cell);
+				if (ret == -EAGAIN)
+					continue;
+				of_node_put(np);
+				if (ret)
+					goto fail_alias;
+
+				goto match;
+			}
+		}
 		for_each_child_of_node(parent->of_node, np) {
 			if (of_device_is_compatible(np, cell->of_compatible)) {
 				/* Skip 'disabled' devices */
