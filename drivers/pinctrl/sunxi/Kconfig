@@ -16,12 +16,6 @@ config PINCTRL_SUN4I_A10
 	default MACH_SUN4I || MACH_SUN7I || MACH_SUN8I
 	select PINCTRL_SUNXI
 
-config PINCTRL_H618
-	bool "Support for the Allwinner H618"
-	default ARCH_SUNXI
-	select PINCTRL_SUNXI
-
-
 config PINCTRL_SUN5I
 	bool "Support for the Allwinner A10s, A13, R8 and NextThing GR8 PIO"
 	default MACH_SUN5I

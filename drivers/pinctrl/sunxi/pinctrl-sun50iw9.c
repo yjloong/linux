@@ -897,37 +897,93 @@ static const struct sunxi_desc_pin sun50iw9_pins[] = {
 		  SUNXI_FUNCTION_IRQ_BANK(0x6, 7, 16)),
 };
 
-static const unsigned int h618_irq_bank_map[] = { 0, 2, 3, 4, 5, 6, 7, 8 };
-
-static const struct sunxi_pinctrl_desc h618_pinctrl_data = {
-	.pins = sun50iw9_pins,
-	.npins = ARRAY_SIZE(sun50iw9_pins),
-	.irq_banks = ARRAY_SIZE(h618_irq_bank_map),
-	.irq_bank_map = h618_irq_bank_map,
-	.irq_read_needs_mux = true,
-	.io_bias_cfg_variant = BIAS_VOLTAGE_PIO_POW_MODE_CTL,
+static const unsigned int sun50iw9_irq_bank_map[] = {
+	SUNXI_BANK_OFFSET('A', 'A'),
+	SUNXI_BANK_OFFSET('C', 'A'),
+	SUNXI_BANK_OFFSET('D', 'A'),
+	SUNXI_BANK_OFFSET('E', 'A'),
+	SUNXI_BANK_OFFSET('F', 'A'),
+	SUNXI_BANK_OFFSET('G', 'A'),
+	SUNXI_BANK_OFFSET('H', 'A'),
+	SUNXI_BANK_OFFSET('I', 'A'),
 };
 
-static int h618_pinctrl_probe(struct platform_device *pdev)
+static const struct sunxi_pinctrl_desc sun50iw9_pinctrl_data = {
+	.pins = sun50iw9_pins,
+	.npins = ARRAY_SIZE(sun50iw9_pins),
+	.irq_banks = ARRAY_SIZE(sun50iw9_irq_bank_map),
+	.irq_bank_map = sun50iw9_irq_bank_map,
+	.io_bias_cfg_variant = BIAS_VOLTAGE_PIO_POW_MODE_CTL,
+	.pf_power_source_switch = true,
+	.hw_type = SUNXI_PCTL_HW_TYPE_0,
+};
+
+static void *mem;
+static int mem_size;
+
+static int sun50iw9_pinctrl_probe(struct platform_device *pdev)
 {
-	pr_err("%s: %d\n", __func__, __LINE__);
-	return sunxi_pinctrl_init(pdev, &h618_pinctrl_data);
+	struct resource *res;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -EINVAL;
+	mem_size = resource_size(res);
+
+	mem = devm_kzalloc(&pdev->dev, mem_size, GFP_KERNEL);
+	if (!mem)
+		return -ENOMEM;
+
+#if IS_ENABLED(CONFIG_PINCTRL_SUNXI_DEBUGFS)
+        dev_set_name(&pdev->dev, "pio");
+ #endif
+
+	return sunxi_pinctrl_init(pdev, &sun50iw9_pinctrl_data);
 }
 
-static const struct of_device_id h618_pinctrl_match[] = {
+static int __maybe_unused sun50iw9_pinctrl_suspend_noirq(struct device *dev)
+{
+	struct sunxi_pinctrl *pctl = dev_get_drvdata(dev);
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&pctl->lock, flags);
+	memcpy(mem, pctl->membase, mem_size);
+	raw_spin_unlock_irqrestore(&pctl->lock, flags);
+
+	return 0;
+}
+
+static int __maybe_unused sun50iw9_pinctrl_resume_noirq(struct device *dev)
+{
+	struct sunxi_pinctrl *pctl = dev_get_drvdata(dev);
+	unsigned long flags;
+
+	raw_spin_lock_irqsave(&pctl->lock, flags);
+	memcpy(pctl->membase, mem, mem_size);
+	raw_spin_unlock_irqrestore(&pctl->lock, flags);
+
+	return 0;
+}
+
+static struct of_device_id sun50iw9_pinctrl_match[] = {
 	{ .compatible = "allwinner,sun50iw9-pinctrl", },
 	{}
 };
+MODULE_DEVICE_TABLE(of, sun50iw9_pinctrl_match);
 
-static struct platform_driver sun50iw9_pinctrl_driver = {
-	.probe	= h618_pinctrl_probe,
-	.driver	= {
-		.name		= "sun50wi9-h618-pinctrl",
-		.of_match_table	= h618_pinctrl_match,
-	},
+static const struct dev_pm_ops sun50iw9_pinctrl_pm_ops = {
+	.suspend_noirq = sun50iw9_pinctrl_suspend_noirq,
+	.resume_noirq = sun50iw9_pinctrl_resume_noirq,
 };
 
-MODULE_DEVICE_TABLE(of, h618_pinctrl_match);
+static struct platform_driver sun50iw9_pinctrl_driver = {
+	.probe	= sun50iw9_pinctrl_probe,
+	.driver	= {
+		.name		= "sun50iw9-pinctrl",
+		.pm = &sun50iw9_pinctrl_pm_ops,
+		.of_match_table	= sun50iw9_pinctrl_match,
+	},
+};
 
 static int __init sun50iw9_pio_init(void)
 {

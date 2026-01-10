@@ -25,7 +25,6 @@ static const struct sunxi_pinctrl_desc sun50iw9_r_pinctrl_data = {
 	.pins = sun50iw9_r_pins,
 	.npins = ARRAY_SIZE(sun50iw9_r_pins),
 	.pin_base = SUNXI_PIN_BASE('L'),
-	.hw_type = SUNXI_PCTL_HW_TYPE_0,
 };
 
 static int sun50iw9_r_pinctrl_probe(struct platform_device *pdev)

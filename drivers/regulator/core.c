@@ -5776,6 +5776,7 @@ regulator_register(struct device *dev,
 	int ret, i;
 	bool resolved_early = false;
 
+	pr_info("regulator_register: %s\n", regulator_desc->name);
 	if (cfg == NULL)
 		return ERR_PTR(-EINVAL);
 	if (cfg->ena_gpiod)
@@ -5994,6 +5995,8 @@ regulator_register(struct device *dev,
 	class_for_each_device(&regulator_class, NULL, NULL,
 			      regulator_register_resolve_supply);
 	kfree(config);
+
+	pr_info("regulator_register: Done\n");
 	return rdev;
 
 unset_supplies:
