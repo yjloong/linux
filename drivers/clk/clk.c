@@ -1396,6 +1396,7 @@ int clk_enable(struct clk *clk)
 	if (!clk)
 		return 0;
 
+	pr_info("clk_enable: %s", clk->core->name);
 	return clk_core_enable_lock(clk->core);
 }
 EXPORT_SYMBOL_GPL(clk_enable);
@@ -4441,6 +4442,7 @@ static struct device_node *dev_or_parent_of_node(struct device *dev)
  */
 struct clk *clk_register(struct device *dev, struct clk_hw *hw)
 {
+	
 	return __clk_register(dev, dev_or_parent_of_node(dev), hw);
 }
 EXPORT_SYMBOL_GPL(clk_register);

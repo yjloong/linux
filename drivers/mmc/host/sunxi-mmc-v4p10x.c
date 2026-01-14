@@ -478,6 +478,8 @@ static bool sunxi_mmc_hw_busy_v4p10x(struct sunxi_mmc_host *host)
 
 static int sunxi_mmc_dat0_busy_v4p10x(struct sunxi_mmc_host *host)
 {
+	return 0;
+	#if 0
 	struct device_node *np;
 	struct mmc_host *mmc = host->mmc;
 	unsigned long config_set;
@@ -507,6 +509,7 @@ static int sunxi_mmc_dat0_busy_v4p10x(struct sunxi_mmc_host *host)
 	}
 
 	return (!config_get);
+	#endif
 }
 
 void sunxi_mmc_init_priv_v4p10x(struct sunxi_mmc_host *host,
