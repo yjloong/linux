@@ -16,7 +16,7 @@ struct _ccu_nm {
 	unsigned long	m, min_m, max_m;
 };
 
-static unsigned long ccu_nm_calc_rate(unsigned long parent,
+static u64 ccu_nm_calc_rate(unsigned long parent,
 				      unsigned long n, unsigned long m)
 {
 	u64 rate = parent;
@@ -27,19 +27,22 @@ static unsigned long ccu_nm_calc_rate(unsigned long parent,
 	return rate;
 }
 
-static unsigned long ccu_nm_find_best(struct ccu_common *common, unsigned long parent,
-				      unsigned long rate, struct _ccu_nm *nm)
+static void ccu_nm_find_best(unsigned long parent, u64 rate,
+			     struct _ccu_nm *nm)
 {
-	unsigned long best_rate = 0;
+	u64 best_rate = 0;
 	unsigned long best_n = 0, best_m = 0;
 	unsigned long _n, _m;
 
 	for (_n = nm->min_n; _n <= nm->max_n; _n++) {
 		for (_m = nm->min_m; _m <= nm->max_m; _m++) {
-			unsigned long tmp_rate = ccu_nm_calc_rate(parent,
-								  _n, _m);
+			u64 tmp_rate = ccu_nm_calc_rate(parent,
+							 _n, _m);
 
-			if (ccu_is_better_rate(common, rate, tmp_rate, best_rate)) {
+			if (tmp_rate > rate)
+				continue;
+
+			if ((rate - tmp_rate) < (rate - best_rate)) {
 				best_rate = tmp_rate;
 				best_n = _n;
 				best_m = _m;
@@ -49,8 +52,6 @@ static unsigned long ccu_nm_find_best(struct ccu_common *common, unsigned long p
 
 	nm->n = best_n;
 	nm->m = best_m;
-
-	return best_rate;
 }
 
 static void ccu_nm_disable(struct clk_hw *hw)
@@ -78,7 +79,7 @@ static unsigned long ccu_nm_recalc_rate(struct clk_hw *hw,
 					unsigned long parent_rate)
 {
 	struct ccu_nm *nm = hw_to_ccu_nm(hw);
-	unsigned long rate;
+	u64 rate;
 	unsigned long n, m;
 	u32 reg;
 
@@ -86,7 +87,7 @@ static unsigned long ccu_nm_recalc_rate(struct clk_hw *hw,
 		rate = ccu_frac_helper_read_rate(&nm->common, &nm->frac);
 
 		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-			rate /= nm->fixed_post_div;
+			do_div(rate, nm->fixed_post_div);
 
 		return rate;
 	}
@@ -111,44 +112,45 @@ static unsigned long ccu_nm_recalc_rate(struct clk_hw *hw,
 		rate = ccu_nm_calc_rate(parent_rate, n, m);
 
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-		rate /= nm->fixed_post_div;
+		do_div(rate, nm->fixed_post_div);
 
 	return rate;
 }
 
-static int ccu_nm_determine_rate(struct clk_hw *hw,
-				 struct clk_rate_request *req)
+static long ccu_nm_round_rate(struct clk_hw *hw, unsigned long _rate,
+			      unsigned long *parent_rate)
 {
 	struct ccu_nm *nm = hw_to_ccu_nm(hw);
 	struct _ccu_nm _nm;
+	u64 rate = _rate;
 
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-		req->rate *= nm->fixed_post_div;
+		rate *= nm->fixed_post_div;
 
-	if (req->rate < nm->min_rate) {
-		req->rate = nm->min_rate;
+	if (rate < nm->min_rate) {
+		rate = nm->min_rate;
 		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-			req->rate /= nm->fixed_post_div;
-		return 0;
+			do_div(rate, nm->fixed_post_div);
+		return rate;
 	}
 
-	if (nm->max_rate && req->rate > nm->max_rate) {
-		req->rate = nm->max_rate;
+	if (nm->max_rate && rate > nm->max_rate) {
+		rate = nm->max_rate;
 		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-			req->rate /= nm->fixed_post_div;
-		return 0;
+			do_div(rate, nm->fixed_post_div);
+		return rate;
 	}
 
-	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, req->rate)) {
+	if (ccu_frac_helper_has_rate(&nm->common, &nm->frac, rate)) {
 		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-			req->rate /= nm->fixed_post_div;
-		return 0;
+			do_div(rate, nm->fixed_post_div);
+		return rate;
 	}
 
-	if (ccu_sdm_helper_has_rate(&nm->common, &nm->sdm, req->rate)) {
+	if (ccu_sdm_helper_has_rate(&nm->common, &nm->sdm, rate)) {
 		if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-			req->rate /= nm->fixed_post_div;
-		return 0;
+			do_div(rate, nm->fixed_post_div);
+		return rate;
 	}
 
 	_nm.min_n = nm->n.min ?: 1;
@@ -156,22 +158,23 @@ static int ccu_nm_determine_rate(struct clk_hw *hw,
 	_nm.min_m = 1;
 	_nm.max_m = nm->m.max ?: 1 << nm->m.width;
 
-	req->rate = ccu_nm_find_best(&nm->common, req->best_parent_rate,
-				     req->rate, &_nm);
+	ccu_nm_find_best(*parent_rate, rate, &_nm);
+	rate = ccu_nm_calc_rate(*parent_rate, _nm.n, _nm.m);
 
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
-		req->rate /= nm->fixed_post_div;
+		do_div(rate, nm->fixed_post_div);
 
-	return 0;
+	return rate;
 }
 
-static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
+static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long _rate,
 			   unsigned long parent_rate)
 {
 	struct ccu_nm *nm = hw_to_ccu_nm(hw);
 	struct _ccu_nm _nm;
 	unsigned long flags;
 	u32 reg;
+	u64 rate = _rate;
 
 	/* Adjust target rate according to post-dividers */
 	if (nm->common.features & CCU_FEATURE_FIXED_POSTDIV)
@@ -208,7 +211,7 @@ static int ccu_nm_set_rate(struct clk_hw *hw, unsigned long rate,
 					   &_nm.m, &_nm.n);
 	} else {
 		ccu_sdm_helper_disable(&nm->common, &nm->sdm);
-		ccu_nm_find_best(&nm->common, parent_rate, rate, &_nm);
+		ccu_nm_find_best(parent_rate, rate, &_nm);
 	}
 
 	spin_lock_irqsave(nm->common.lock, flags);
@@ -234,7 +237,7 @@ const struct clk_ops ccu_nm_ops = {
 	.is_enabled	= ccu_nm_is_enabled,
 
 	.recalc_rate	= ccu_nm_recalc_rate,
-	.determine_rate = ccu_nm_determine_rate,
+	.round_rate	= ccu_nm_round_rate,
 	.set_rate	= ccu_nm_set_rate,
 };
-EXPORT_SYMBOL_NS_GPL(ccu_nm_ops, "SUNXI_CCU");
+EXPORT_SYMBOL_GPL(ccu_nm_ops);

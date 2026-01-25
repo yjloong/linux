@@ -18,7 +18,6 @@ bool ccu_frac_helper_is_enabled(struct ccu_common *common,
 
 	return !(readl(common->base + common->reg) & cf->enable);
 }
-EXPORT_SYMBOL_NS_GPL(ccu_frac_helper_is_enabled, "SUNXI_CCU");
 
 void ccu_frac_helper_enable(struct ccu_common *common,
 			    struct ccu_frac_internal *cf)
@@ -34,7 +33,6 @@ void ccu_frac_helper_enable(struct ccu_common *common,
 	writel(reg & ~cf->enable, common->base + common->reg);
 	spin_unlock_irqrestore(common->lock, flags);
 }
-EXPORT_SYMBOL_NS_GPL(ccu_frac_helper_enable, "SUNXI_CCU");
 
 void ccu_frac_helper_disable(struct ccu_common *common,
 			     struct ccu_frac_internal *cf)
@@ -50,18 +48,16 @@ void ccu_frac_helper_disable(struct ccu_common *common,
 	writel(reg | cf->enable, common->base + common->reg);
 	spin_unlock_irqrestore(common->lock, flags);
 }
-EXPORT_SYMBOL_NS_GPL(ccu_frac_helper_disable, "SUNXI_CCU");
 
 bool ccu_frac_helper_has_rate(struct ccu_common *common,
 			      struct ccu_frac_internal *cf,
-			      unsigned long rate)
+			      u64 rate)
 {
 	if (!(common->features & CCU_FEATURE_FRACTIONAL))
 		return false;
 
 	return (cf->rates[0] == rate) || (cf->rates[1] == rate);
 }
-EXPORT_SYMBOL_NS_GPL(ccu_frac_helper_has_rate, "SUNXI_CCU");
 
 unsigned long ccu_frac_helper_read_rate(struct ccu_common *common,
 					struct ccu_frac_internal *cf)
@@ -73,7 +69,7 @@ unsigned long ccu_frac_helper_read_rate(struct ccu_common *common,
 	if (!(common->features & CCU_FEATURE_FRACTIONAL))
 		return 0;
 
-	pr_debug("%s: clock is fractional (rates %lu and %lu)\n",
+	pr_debug("%s: clock is fractional (rates %llu and %llu)\n",
 		 clk_hw_get_name(&common->hw), cf->rates[0], cf->rates[1]);
 
 	reg = readl(common->base + common->reg);
@@ -83,11 +79,10 @@ unsigned long ccu_frac_helper_read_rate(struct ccu_common *common,
 
 	return (reg & cf->select) ? cf->rates[1] : cf->rates[0];
 }
-EXPORT_SYMBOL_NS_GPL(ccu_frac_helper_read_rate, "SUNXI_CCU");
 
 int ccu_frac_helper_set_rate(struct ccu_common *common,
 			     struct ccu_frac_internal *cf,
-			     unsigned long rate, u32 lock)
+			     u64 rate, u32 lock)
 {
 	unsigned long flags;
 	u32 reg, sel;
@@ -112,4 +107,3 @@ int ccu_frac_helper_set_rate(struct ccu_common *common,
 
 	return 0;
 }
-EXPORT_SYMBOL_NS_GPL(ccu_frac_helper_set_rate, "SUNXI_CCU");

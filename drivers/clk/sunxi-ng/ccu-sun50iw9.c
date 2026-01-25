@@ -1233,10 +1233,10 @@ static int sun50iw9_ccu_probe(struct platform_device *pdev)
 		set_reg(reg + sun50iw9_usb_clk_regs[i], 0x0, 2, 24);
 	}
 
-	ret = of_sunxi_ccu_probe(pdev->dev.of_node, reg, &sun50iw9_ccu_desc);
+	ret = sunxi_ccu_probe(pdev->dev.of_node, reg, &sun50iw9_ccu_desc);
 	if (ret)
 		return ret;
-	
+
 	/* Gate then ungate PLL CPU after any rate changes */
 	ccu_pll_notifier_register(&sun50iw9_pll_cpu_nb);
 

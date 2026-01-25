@@ -17,7 +17,7 @@ struct _ccu_nkmp {
 	unsigned long	p, min_p, max_p;
 };
 
-static unsigned long ccu_nkmp_calc_rate(unsigned long parent,
+static u64 ccu_nkmp_calc_rate(unsigned long parent,
 					unsigned long n, unsigned long k,
 					unsigned long m, unsigned long p)
 {
@@ -29,10 +29,10 @@ static unsigned long ccu_nkmp_calc_rate(unsigned long parent,
 	return rate;
 }
 
-static unsigned long ccu_nkmp_find_best(unsigned long parent, unsigned long rate,
-					struct _ccu_nkmp *nkmp)
+static void ccu_nkmp_find_best(unsigned long parent, u64 rate,
+			       struct _ccu_nkmp *nkmp)
 {
-	unsigned long best_rate = 0;
+	u64 best_rate = 0;
 	unsigned long best_n = 0, best_k = 0, best_m = 0, best_p = 0;
 	unsigned long _n, _k, _m, _p;
 
@@ -40,7 +40,7 @@ static unsigned long ccu_nkmp_find_best(unsigned long parent, unsigned long rate
 		for (_n = nkmp->min_n; _n <= nkmp->max_n; _n++) {
 			for (_m = nkmp->min_m; _m <= nkmp->max_m; _m++) {
 				for (_p = nkmp->min_p; _p <= nkmp->max_p; _p <<= 1) {
-					unsigned long tmp_rate;
+					u64 tmp_rate;
 
 					tmp_rate = ccu_nkmp_calc_rate(parent,
 								      _n, _k,
@@ -65,8 +65,6 @@ static unsigned long ccu_nkmp_find_best(unsigned long parent, unsigned long rate
 	nkmp->k = best_k;
 	nkmp->m = best_m;
 	nkmp->p = best_p;
-
-	return best_rate;
 }
 
 static void ccu_nkmp_disable(struct clk_hw *hw)
@@ -127,20 +125,21 @@ static unsigned long ccu_nkmp_recalc_rate(struct clk_hw *hw,
 	return rate;
 }
 
-static int ccu_nkmp_determine_rate(struct clk_hw *hw,
-				   struct clk_rate_request *req)
+static long ccu_nkmp_round_rate(struct clk_hw *hw, unsigned long _rate,
+			      unsigned long *parent_rate)
 {
 	struct ccu_nkmp *nkmp = hw_to_ccu_nkmp(hw);
 	struct _ccu_nkmp _nkmp;
+	u64 rate = _rate;
 
 	if (nkmp->common.features & CCU_FEATURE_FIXED_POSTDIV)
-		req->rate *= nkmp->fixed_post_div;
+		rate *= nkmp->fixed_post_div;
 
-	if (nkmp->max_rate && req->rate > nkmp->max_rate) {
-		req->rate = nkmp->max_rate;
+	if (nkmp->max_rate && rate > nkmp->max_rate) {
+		rate = nkmp->max_rate;
 		if (nkmp->common.features & CCU_FEATURE_FIXED_POSTDIV)
-			req->rate /= nkmp->fixed_post_div;
-		return 0;
+			do_div(rate, nkmp->fixed_post_div);
+		return rate;
 	}
 
 	_nkmp.min_n = nkmp->n.min ?: 1;
@@ -152,22 +151,24 @@ static int ccu_nkmp_determine_rate(struct clk_hw *hw,
 	_nkmp.min_p = 1;
 	_nkmp.max_p = nkmp->p.max ?: 1 << ((1 << nkmp->p.width) - 1);
 
-	req->rate = ccu_nkmp_find_best(req->best_parent_rate, req->rate,
-				       &_nkmp);
+	ccu_nkmp_find_best(*parent_rate, rate, &_nkmp);
 
+	rate = ccu_nkmp_calc_rate(*parent_rate, _nkmp.n, _nkmp.k,
+				  _nkmp.m, _nkmp.p);
 	if (nkmp->common.features & CCU_FEATURE_FIXED_POSTDIV)
-		req->rate = req->rate / nkmp->fixed_post_div;
+		do_div(rate, nkmp->fixed_post_div);
 
-	return 0;
+	return rate;
 }
 
-static int ccu_nkmp_set_rate(struct clk_hw *hw, unsigned long rate,
+static int ccu_nkmp_set_rate(struct clk_hw *hw, unsigned long _rate,
 			   unsigned long parent_rate)
 {
 	struct ccu_nkmp *nkmp = hw_to_ccu_nkmp(hw);
 	u32 n_mask = 0, k_mask = 0, m_mask = 0, p_mask = 0;
 	struct _ccu_nkmp _nkmp;
 	unsigned long flags;
+	u64 rate = _rate;
 	u32 reg;
 
 	if (nkmp->common.features & CCU_FEATURE_FIXED_POSTDIV)
@@ -228,7 +229,7 @@ const struct clk_ops ccu_nkmp_ops = {
 	.is_enabled	= ccu_nkmp_is_enabled,
 
 	.recalc_rate	= ccu_nkmp_recalc_rate,
-	.determine_rate = ccu_nkmp_determine_rate,
+	.round_rate	= ccu_nkmp_round_rate,
 	.set_rate	= ccu_nkmp_set_rate,
 };
-EXPORT_SYMBOL_NS_GPL(ccu_nkmp_ops, "SUNXI_CCU");
+EXPORT_SYMBOL_GPL(ccu_nkmp_ops);

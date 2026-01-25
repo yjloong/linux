@@ -25,8 +25,6 @@
 
 #include "ccu-sun50iw9-rtc.h"
 
-
-
 /*
  * clock source:
  *  iosc---16M_RC: used by the cpu system directly.
@@ -144,10 +142,7 @@ static int sun50iw9_rtc_ccu_probe(struct platform_device *pdev)
 
 	clock_source_init(reg);
 
-	int ret = of_sunxi_ccu_probe(pdev->dev.of_node, reg, &sun50iw9_rtc_ccu_desc);
-	if (ret)
-		return ret;
-	return 0;
+	return sunxi_ccu_probe(pdev->dev.of_node, reg, &sun50iw9_rtc_ccu_desc);
 }
 
 static const struct of_device_id sun50iw9_rtc_ccu_ids[] = {
